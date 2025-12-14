@@ -1,0 +1,43 @@
+name: Bitcoin SQL Analysis
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'bitcoin_analysis.sql'
+  pull_request:
+    branches:
+      - main
+  schedule:
+    - cron: '0 0 * * *'  # Daily at midnight UTC
+
+jobs:
+  run-sql-analysis:
+    runs-on: ubuntu-latest
+    
+    services:
+      sqlite:
+        image: keinos/sqlite3:latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Run Bitcoin SQL Analysis
+        run: |
+          echo "Running Bitcoin Data Analysis SQL Script"
+          sqlite3 :memory: < bitcoin_analysis.sql > analysis_output.txt
+      
+      - name: Display Analysis Results
+        run: |
+          echo "=== Bitcoin Analysis Results ==="
+          cat analysis_output.txt
+      
+      - name: Upload Results as Artifact
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: bitcoin-analysis-results
+          path: analysis_output.txt
+          retention-days: 30
