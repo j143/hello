@@ -1,0 +1,49 @@
+name: Run Bitcoin Analysis SQL
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  schedule:
+    # Run daily at 10:00 AM UTC
+    - cron: '0 10 * * *'
+
+jobs:
+  analyze-bitcoin:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up SQLite
+        run: sudo apt-get update && sudo apt-get install -y sqlite3
+
+      - name: Create Bitcoin database
+        run: |
+          sqlite3 bitcoin.db < bitcoin_data_analysis.sql
+
+      - name: Run Bitcoin analysis queries
+        run: |
+          echo "=== Bitcoin Data Analysis Results ==="
+          sqlite3 bitcoin.db "SELECT * FROM bitcoin_data LIMIT 5;"
+          echo ""
+          echo "=== Price Statistics ==="
+          sqlite3 bitcoin.db "SELECT ROUND(AVG(close_price), 2) AS avg_price, MIN(close_price) AS min_price, MAX(close_price) AS max_price FROM bitcoin_data;"
+
+      - name: Generate analysis report
+        run: |
+          echo "Bitcoin Analysis Report" > report.txt
+          echo "======================" >> report.txt
+          echo "" >> report.txt
+          sqlite3 bitcoin.db "SELECT date, open_price, close_price, ROUND(((close_price - open_price) / open_price) * 100, 2) AS change_percent FROM bitcoin_data;" >> report.txt
+
+      - name: Upload report as artifact
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bitcoin-analysis-report
+          path: report.txt
